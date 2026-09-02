@@ -17,3 +17,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# WiFi credentials
+src/wifi_credentials.h

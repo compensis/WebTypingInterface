@@ -7,6 +7,8 @@
 #include "USBHIDKeyboard.h"
 #include <ESPmDNS.h>
 
+#include "wifi_credentials.h"
+
 const int NUM_BUTTONS = 9;
 const int debounceDelay = 200; // milliseconds
 
@@ -22,14 +24,7 @@ bool keepAliveEnabled = false;
 unsigned long lastKeepAliveTime = 0;
 const unsigned long KEEP_ALIVE_INTERVAL = 5UL * 60UL * 1000UL; // 5 minutes
 
-// ================= USB HID ================= 
-
 USBHIDKeyboard Keyboard;
-
-// ================= WIFI ================= 
-
-const char* ssid = "YOUR_WIFI_NAME";
-const char* password = "YOUR_WIFI_PASSWORD";
 
 WebServer server(80);
 
