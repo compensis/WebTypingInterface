@@ -9,12 +9,6 @@
 
 #include "wifi_credentials.h"
 
-const int NUM_BUTTONS = 9;
-const int debounceDelay = 200; // milliseconds
-
-int buttonPins[NUM_BUTTONS] = {4,5,12,13,14,15,16,17,18};
-bool lastButtonState[NUM_BUTTONS];
-unsigned long lastDebounceTime[NUM_BUTTONS];
 bool typingInProgress = false;
 
 int typingSpeedMs = 80;     // base delay between keystrokes
@@ -111,24 +105,6 @@ const char* htmlPage = R"rawliteral(
 
 // ================= HUMAN TYPING ================= 
 
-void runKeepAlive() {
-  Serial.println("KEEP ALIVE: Launching Edge");
-
-  // Win + R
-  Keyboard.press(KEY_LEFT_GUI);
-  Keyboard.press('r');
-  Keyboard.releaseAll();
-  delay(300);
-
-  // Type Edge command
-  Keyboard.print("msedge https://www.google.com");
-  delay(100);
-
-  // Enter
-  Keyboard.press(KEY_RETURN);
-  Keyboard.release(KEY_RETURN);
-}
-
 void humanDelay() {
   int jitter = random(-typingSpeedMs / 3, typingSpeedMs / 3);
   delay(max(10, typingSpeedMs + jitter));
@@ -173,94 +149,6 @@ void humanType(const String& text) {
       delay(random(500, 1000));
   }
 }
-
-// Map buttons to HID actions (example: Ctrl+C, Ctrl+V...)
-void triggerAction(int btn) {
-
-  // ANY button press cancels keep-alive
-  if (keepAliveEnabled && btn != 3) {
-    keepAliveEnabled = false;
-    Serial.println("KEEP ALIVE DISABLED (button activity)");
-    return;
-  }
-
-  switch (btn) {
-    case 0: //button 1
-      Serial.println("Button 1 pressed: Ctrl+C");
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press('c');
-      delay(50);
-      Keyboard.releaseAll();
-      break;
-    case 1: // Button 2
-      Serial.println("Button 2 pressed: Ctrl+V");
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press('v');
-      delay(50);
-      Keyboard.releaseAll();
-      break;
-    case 2:// Button 3
-      Serial.println("Button 3 pressed: Ctrl+A (Select All)");
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press('a');
-      delay(50);
-      Keyboard.releaseAll();
-      break;
-    case 3: // BUTTON 4 → KEEP ALIVE Toggle
-      keepAliveEnabled = !keepAliveEnabled;
-      lastKeepAliveTime = millis();
-      Serial.println("KEEP ALIVE changed");
-      break;
-
-    case 4: // BUTTON 5 → Alt + tab
-      Keyboard.press(KEY_LEFT_ALT);
-      Keyboard.press(KEY_TAB);
-      delay(100);
-      Keyboard.releaseAll();
-      break;
-    case 5:
-      Serial.println("Button 6 pressed: Ctrl+X (Cut)");
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press('x');
-      delay(50);
-      Keyboard.releaseAll();
-      break;
-    case 6:
-      Serial.println("Button 7 pressed: Ctrl+Alt+Delete, wait 2s, Enter");
-
-      // Ctrl + Alt + Delete
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press(KEY_LEFT_ALT);
-      Keyboard.press(KEY_DELETE);
-      delay(100);
-      Keyboard.releaseAll();
-
-      // Wait 2 seconds
-      delay(2000);
-
-      // Press Enter
-      Keyboard.press(KEY_RETURN);
-      delay(50);
-      Keyboard.release(KEY_RETURN);
-
-      break;
-    case 7:
-      Serial.println("Button 8 pressed: Ctrl+S (Save)");
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press('s');
-      delay(50);
-      Keyboard.releaseAll();
-      break;
-    case 8:
-      Serial.println("Button 9 pressed: Ctrl+P (Print)");
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press('p');
-      delay(50);
-      Keyboard.releaseAll();
-      break;
-  }
-}
-
 
 // ================= WEB HANDLERS ================= 
 
@@ -335,13 +223,6 @@ void setup() {
 
   // setup http://human-typing-keyboard.local
   MDNS.begin("human-typing-keyboard");
-
-  for (int i = 0; i < NUM_BUTTONS; i++) {
-    pinMode(buttonPins[i], INPUT_PULLUP);
-    lastButtonState[i] = HIGH;  // buttons idle HIGH
-    lastDebounceTime[i] = 0;
-  }
-
 }
 
 // ================= LOOP ================= 
@@ -356,29 +237,5 @@ void loop() {
     delay(500);                       // optional focus delay
     humanType(textToType);
     typingInProgress = false;
-  }
-
-  for (int i = 0; i < NUM_BUTTONS; i++) {
-    int reading = digitalRead(buttonPins[i]);
-
-    // If the reading changed, reset the debounce timer
-    if (reading == LOW) {
-      if ((millis() - lastDebounceTime[i]) > debounceDelay) {
-        lastDebounceTime[i] = millis();
-        triggerAction(i); // prints to Serial & sends HID keys
-      }
-
-    }
-
-    lastButtonState[i] = reading;
-  }
-  if (keepAliveEnabled) {
-    unsigned long now = millis();
-
-    if (now - lastKeepAliveTime >= KEEP_ALIVE_INTERVAL) {
-      Serial.println("\nrunning browser");
-      lastKeepAliveTime = now;
-      runKeepAlive();
-    }
   }
 }
