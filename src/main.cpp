@@ -60,12 +60,10 @@ const char* htmlPage = R"rawliteral(
         const text = textarea.value;
         if (!text || text.trim().length === 0) return;
 
-        const params = "text=" + encodeURIComponent(text);
-
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/send", true);
-        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-        xhr.send(params);
+        xhr.setRequestHeader("Content-type", "text/plain; charset=utf-8");
+        xhr.send(text);
 
         textarea.value = "";
         textarea.focus();
@@ -105,9 +103,10 @@ void handleRoot() {
 }
 
 void handleSend() {
-  textBuffer = server.arg("text");
+  textBuffer = server.arg("plain");
 
-  Serial.printf("Received text (%d chars)\n", textBuffer.length());
+  Serial.printf("Received text (%d chars):\n", textBuffer.length());
+  Serial.println(textBuffer);
 
   startTyping = true;
   server.send(200, "text/plain", "OK");
