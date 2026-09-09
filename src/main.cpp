@@ -181,7 +181,7 @@ void handleSend() {
 // ================= SETUP ================= 
 
 void setup() {
-  delay(1000);
+  delay(3000);
 
   Serial.begin(115200);       // Start the Serial Monitor
   while (!Serial) { }         // Wait for Serial to be ready (optional)
