@@ -11,13 +11,6 @@
 
 bool typingInProgress = false;
 
-int typingSpeedMs = 80;     // base delay between keystrokes
-int errorPercent = 5;      // percent chance of typo
-
-bool keepAliveEnabled = false;
-unsigned long lastKeepAliveTime = 0;
-const unsigned long KEEP_ALIVE_INTERVAL = 5UL * 60UL * 1000UL; // 5 minutes
-
 USBHIDKeyboard Keyboard;
 
 WebServer server(80);
@@ -42,16 +35,6 @@ const char* htmlPage = R"rawliteral(
   <script>
     document.addEventListener("DOMContentLoaded", function() {
       const textarea = document.getElementById("inputText");
-      const speedSlider = document.getElementById("speed");
-      const errorSlider = document.getElementById("error");
-      const speedValue = document.getElementById("speedValue");
-      const errorValue = document.getElementById("errorValue");
-
-      speedValue.textContent = speedSlider.value;
-      errorValue.textContent = errorSlider.value;
-
-      speedSlider.oninput = () => speedValue.textContent = speedSlider.value;
-      errorSlider.oninput = () => errorValue.textContent = errorSlider.value;
 
       textarea.addEventListener("keydown", function(e) {
         if (e.key === "Enter" && !e.shiftKey) {
@@ -64,10 +47,7 @@ const char* htmlPage = R"rawliteral(
         const text = textarea.value;
         if (!text || text.trim().length === 0) return;
 
-        const params =
-          "text=" + encodeURIComponent(text) +
-          "&speed=" + speedSlider.value +
-          "&error=" + errorSlider.value;
+        const params = "text=" + encodeURIComponent(text);
 
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/send", true);
@@ -87,66 +67,21 @@ const char* htmlPage = R"rawliteral(
   <textarea id="inputText" rows="10"
     placeholder="Enter = send | Shift+Enter = newline"></textarea>
 
-  <div class="slider-container">
-    <label>
-      Typing Speed (ms): <span id="speedValue"></span>
-      <input type="range" id="speed" min="20" max="200" value="80">
-    </label>
-
-    <label>
-      Error %: <span id="errorValue"></span>%
-      <input type="range" id="error" min="0" max="20" value="5">
-    </label>
-  </div>
 </body>
 </html>
 )rawliteral";
 
-
-// ================= HUMAN TYPING ================= 
-
-void humanDelay() {
-  int jitter = random(-typingSpeedMs / 3, typingSpeedMs / 3);
-  delay(max(10, typingSpeedMs + jitter));
-}
-
-void typeChar(char c) {
-  Keyboard.print(c);
-}
-
-void backspace() {
-  Keyboard.press(KEY_BACKSPACE);
-  delay(10);
-  Keyboard.release(KEY_BACKSPACE);
-}
-
-void humanType(const String& text) {
+void type(const String& text) {
   for (int i = 0; i < text.length(); i++) {
-    humanDelay();
-
     char c = text[i];
-
-    // 5% typo chance only for letters
-    if (random(0, 100) < errorPercent && isalpha(c)) {
-      Keyboard.print('x');
-      delay(random(40, 120));
-      Keyboard.press(KEY_BACKSPACE);
-      Keyboard.release(KEY_BACKSPACE);
-    }
 
     if (c == '\n') {
       Keyboard.press(KEY_RETURN);
       delay(10);
       Keyboard.release(KEY_RETURN);
     } else {
-      typeChar(c);
+      Keyboard.print(c);
     }
-
-    // Natural pauses
-    if (c == '.' || c == ',')
-      delay(random(300, 700));
-    if (c == '\n')
-      delay(random(500, 1000));
   }
 }
 
@@ -159,20 +94,7 @@ void handleRoot() {
 void handleSend() {
   textBuffer = server.arg("text");
 
-  if (server.hasArg("speed")) {
-    typingSpeedMs = server.arg("speed").toInt();
-  }
-
-  if (server.hasArg("error")) {
-    errorPercent = server.arg("error").toInt();
-  }
-
-  Serial.printf(
-    "Received text (%d chars), speed=%dms, error=%d%%\n",
-    textBuffer.length(),
-    typingSpeedMs,
-    errorPercent
-  );
+  Serial.printf("Received text (%d chars)\n", textBuffer.length());
 
   startTyping = true;
   server.send(200, "text/plain", "OK");
@@ -235,7 +157,7 @@ void loop() {
     String textToType = textBuffer;  // copy
     startTyping = false;              // reset immediately
     delay(500);                       // optional focus delay
-    humanType(textToType);
+    type(textToType);
     typingInProgress = false;
   }
 }
