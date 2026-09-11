@@ -1,0 +1,48 @@
+R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 USB HID Keyboard</title>
+  <style>
+    body { font-family: Arial; }
+    textarea { width: 100%; font-size: 16px; }
+    .slider-container { margin-top: 10px; }
+    label { display: block; margin-top: 10px; }
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const textarea = document.getElementById("inputText");
+
+      textarea.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendText();
+        }
+      });
+
+      function sendText() {
+        const text = textarea.value;
+        if (!text || text.trim().length === 0) return;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/send", true);
+        xhr.setRequestHeader("Content-type", "text/plain; charset=utf-8");
+        xhr.send(text);
+
+        textarea.value = "";
+        textarea.focus();
+      }
+    });
+  </script>
+</head>
+
+<body>
+  <h2>ESP32 USB HID Keyboard</h2>
+
+  <textarea id="inputText" rows="10"
+    placeholder="Enter = send | Shift+Enter = newline"></textarea>
+
+</body>
+</html>
+)rawliteral";
