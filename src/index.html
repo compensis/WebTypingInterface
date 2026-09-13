@@ -10,27 +10,32 @@
   </style>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const textarea = document.getElementById("inputText");
+    const socket = new WebSocket(`ws://${location.hostname}:81`);
 
-      textarea.addEventListener("keydown", function(e) {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          sendText();
-        }
-      });
+    const KEY_SHIFT = 16;
+    const KEY_CTRL  = 17;
+    const KEY_ALT   = 18;
+    const KEY_META  = 91;
 
-      function sendText() {
-        const text = textarea.value;
-        if (!text || text.trim().length === 0) return;
+    document.addEventListener("keydown", event => {
+      if (socket.readyState === WebSocket.OPEN) {
+        if (event.keyCode === KEY_SHIFT
+          || event.keyCode === KEY_CTRL
+          || event.keyCode === KEY_ALT
+          || event.keyCode === KEY_META)
+          return;
 
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/send", true);
-        xhr.setRequestHeader("Content-type", "text/plain; charset=utf-8");
-        xhr.send(text);
+        const modifiers = [];
 
-        textarea.value = "";
-        textarea.focus();
+        if (event.ctrlKey) modifiers.push(KEY_CTRL);
+        if (event.shiftKey) modifiers.push(KEY_SHIFT);
+        if (event.altKey) modifiers.push(KEY_ALT);
+        if (event.metaKey) modifiers.push(KEY_META);
+
+        const packet = new Uint8Array([...modifiers, event.keyCode]);
+
+        if (socket.readyState === WebSocket.OPEN)
+            socket.send(packet);
       }
     });
   </script>

@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <WebSocketsServer.h>
 
 #include "USB.h"
 #include "USBHIDKeyboard.h"
@@ -27,6 +28,7 @@ public:
 } Keyboard;
 
 WebServer server(80);
+WebSocketsServer webSocket(81);
 
 String textBuffer;
 bool startTyping = false;
@@ -53,17 +55,77 @@ void handleRoot() {
   server.send(200, "text/html", htmlPage);
 }
 
-void handleSend() {
-  textBuffer = server.arg("plain");
+uint8_t jsKeyCodeToHid(uint8_t keyCode) {
+    if (keyCode >= 65 && keyCode <= 90)
+        return keyCode - 65 + 0x04;
+    if (keyCode >= 49 && keyCode <= 57)
+        return keyCode - 49 + 0x1E;
+    if (keyCode == 48)
+        return 0x27;
 
-  Serial.printf("Received text (%d chars):\n", textBuffer.length());
-  Serial.println(textBuffer);
-
-  startTyping = true;
-  server.send(200, "text/plain", "OK");
+    switch (keyCode) {
+        case 13: return 0x28; // Enter
+        case 27: return 0x29; // Escape
+        case 8:  return 0x2A; // Backspace
+        case 9:  return 0x2B; // Tab
+        case 32: return 0x2C; // Space
+    }
+    return 0;
 }
 
-// ================= SETUP ================= 
+void webSocketEvent(
+    uint8_t client,
+    WStype_t type,
+    uint8_t *payload,
+    size_t length)
+{
+    switch (type) {
+        case WStype_CONNECTED:
+            Serial.printf("WebSocket Client %u verbunden\n", client);
+            //Serial.printf("length: %d\n", length);
+            //Serial.printf("Byte 0: %d\n", payload[0]);
+            break;
+
+        case WStype_DISCONNECTED:
+            Serial.printf("WebSocket Client %u getrennt\n", client);
+            break;
+
+        case WStype_BIN: {
+            Serial.printf("length: %d\n", length);
+            Serial.print("KeyCode: ");
+            KeyReport report = {};
+            for (size_t i = 0; i < length; i++) {
+              int keyCode = payload[i];
+              Serial.printf("%d, ", keyCode);
+              switch (keyCode) {
+                  case 16: // Shift
+                      report.modifiers |= 0x02;
+                      break;
+                  case 17: // Ctrl
+                      report.modifiers |= 0x01;
+                      break;
+                  case 18: // Alt
+                      report.modifiers |= 0x04;
+                      break;
+                  case 91: // Meta
+                      report.modifiers |= 0x08;
+                      break;
+                  default:
+                    report.keys[0] = jsKeyCodeToHid(keyCode);
+                    break;
+              }
+            }
+            Serial.print("\b\b\n");
+            Keyboard.sendReport(&report);
+            delay(10);
+            Keyboard.releaseAll();
+            break;
+        }
+
+        default:
+            break;
+    }
+}
 
 void setup() {
   delay(3000);
@@ -103,8 +165,10 @@ void setup() {
 
   //turn on the web server
   server.on("/", handleRoot);
-  server.on("/send", HTTP_POST, handleSend);
   server.begin();
+
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
 
   // setup http://human-typing-keyboard.local
   MDNS.begin("human-typing-keyboard");
@@ -114,6 +178,7 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  webSocket.loop();
 
   if (startTyping && !typingInProgress) {
     typingInProgress = true;
