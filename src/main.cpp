@@ -31,10 +31,7 @@ WebServer server(80);
 String textBuffer;
 bool startTyping = false;
 
-// ================= HTML ================= 
-
-const char* htmlPage =
-#include "index.html"
+extern const char htmlPage[] asm("_binary_src_index_html_start");
 
 void type(const String& text) {
   for (int i = 0; i < text.length(); i++) {
