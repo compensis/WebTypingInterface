@@ -10,8 +10,6 @@
 
 #include "wifi_credentials.h"
 
-bool typingInProgress = false;
-
 class DelayedKeyboard: public USBHIDKeyboard {
 public:
   template <typename T>
@@ -30,26 +28,7 @@ public:
 WebServer server(80);
 WebSocketsServer webSocket(81);
 
-String textBuffer;
-bool startTyping = false;
-
 extern const char htmlPage[] asm("_binary_src_index_html_start");
-
-void type(const String& text) {
-  for (int i = 0; i < text.length(); i++) {
-    char c = text[i];
-
-    if (c == '\n') {
-      Keyboard.press(KEY_RETURN);
-      delay(10);
-      Keyboard.release(KEY_RETURN);
-    } else {
-      Keyboard.tap(c);
-    }
-  }
-}
-
-// ================= WEB HANDLERS ================= 
 
 void handleRoot() {
   server.send(200, "text/html", htmlPage);
@@ -163,7 +142,7 @@ void setup() {
       Serial.println(WiFi.localIP());
   }
 
-  //turn on the web server
+  // turn on the web server
   server.on("/", handleRoot);
   server.begin();
 
@@ -174,18 +153,7 @@ void setup() {
   MDNS.begin("human-typing-keyboard");
 }
 
-// ================= LOOP ================= 
-
 void loop() {
   server.handleClient();
   webSocket.loop();
-
-  if (startTyping && !typingInProgress) {
-    typingInProgress = true;
-    String textToType = textBuffer;  // copy
-    startTyping = false;              // reset immediately
-    delay(500);                       // optional focus delay
-    type(textToType);
-    typingInProgress = false;
-  }
 }
