@@ -10,20 +10,7 @@
 
 #include "wifi_credentials.h"
 
-class DelayedKeyboard: public USBHIDKeyboard {
-public:
-  template <typename T>
-  size_t tap(T k) {
-    // Press and release key (if press was successfull)
-    auto ret = press(k);
-    // Wait for the key to be sent
-    delay(10);
-    if(ret){
-      release(k);
-    }
-    return ret;
-  }
-} Keyboard;
+USBHIDKeyboard Keyboard;
 
 WebServer server(80);
 WebSocketsServer webSocket(81);
