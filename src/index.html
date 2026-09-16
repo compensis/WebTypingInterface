@@ -10,6 +10,7 @@
   </style>
 
   <script>
+    let modifiers = 0;
     const socket = new WebSocket(`ws://${location.hostname}:81`);
 
     // Mapping from KeyboardEvent.code values to USB HID Keyboard scan codes
@@ -158,8 +159,9 @@
       Lang3: 0x92,
       Lang4: 0x93,
       Lang5: 0x94,
+    };
 
-      // Modifiers
+    const modifierMasks = {
       ControlLeft: 0x01,
       ShiftLeft: 0x02,
       AltLeft: 0x04,
@@ -170,7 +172,7 @@
       MetaRight: 0x80,
     };
 
-    function isModifierKey(keyboarde_event_code) {
+    function isModifierKey(keyboardEventCode) {
       return new Set([
         "ControlLeft",
         "ControlRight",
@@ -180,21 +182,25 @@
         "AltRight",
         "MetaLeft",
         "MetaRight"
-      ]).has(keyboarde_event_code);
+      ]).has(keyboardEventCode);
     }
 
+    document.addEventListener("keyup", event => {
+      if (isModifierKey(event.code)) {
+        const mask = modifierMasks[event.code];
+        modifiers &= ~mask;
+        return;
+      }
+    });
+
     document.addEventListener("keydown", event => {
+      if (isModifierKey(event.code)) {
+        const mask = modifierMasks[event.code];
+        modifiers |= mask;
+        return;
+      }
+
       if (socket.readyState === WebSocket.OPEN) {
-        if (isModifierKey(event.code))
-          return;
-
-        let modifiers = 0;
-
-        if (event.ctrlKey) modifiers |= codes.ControlLeft;
-        if (event.shiftKey) modifiers |= codes.ShiftLeft;
-        if (event.altKey) modifiers |= codes.AltLeft;
-        if (event.metaKey) modifiers |= codes.MetaLeft;
-
         const hidCode = codes[event.code];
         const packet = new Uint8Array([modifiers, hidCode]);
         socket.send(packet);
