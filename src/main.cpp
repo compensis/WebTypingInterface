@@ -25,36 +25,35 @@ void webSocketEvent(
   uint8_t client,
   WStype_t type,
   uint8_t *payload,
-  size_t length)
-{
+  size_t length
+) {
   switch (type) {
-    case WStype_CONNECTED:
-      Serial.printf("WebSocket Client %u verbunden\n", client);
-      //Serial.printf("length: %d\n", length);
-      //Serial.printf("Byte 0: %d\n", payload[0]);
+  case WStype_CONNECTED:
+    Serial.printf("WebSocket Client %u verbunden\n", client);
+    break;
+
+  case WStype_DISCONNECTED:
+    Serial.printf("WebSocket Client %u getrennt\n", client);
+    break;
+
+  case WStype_BIN:
+    Serial.printf("WebSocket Client receives %d bytes\n", length);
+    if (length == 2) {
+      const uint8_t modifiers = payload[0];
+      const uint8_t keyCode = payload[1];
+      Serial.printf("modifiers: %d\n", modifiers);
+      Serial.printf("keyCode: %d\n", keyCode);
+      
+      KeyReport report = {};
+      report.modifiers = modifiers;
+      report.keys[0] = keyCode;
+
+      Keyboard.sendReport(&report);
+      delay(10);
+      Keyboard.releaseAll();
       break;
-
-    case WStype_DISCONNECTED:
-      Serial.printf("WebSocket Client %u getrennt\n", client);
-        break;
-
-    case WStype_BIN: {
-      if (length == 2) {
-        const uint8_t modifiers = payload[0];
-        const uint8_t keyCode = payload[1];
-        Serial.printf("modifiers: %d\n", modifiers);
-        Serial.printf("keyCode: %d\n, ", keyCode);
-        
-        KeyReport report = {};
-        report.modifiers = modifiers;
-        report.keys[0] = keyCode;
-
-        Keyboard.sendReport(&report);
-        delay(10);
-        Keyboard.releaseAll();
-        break;
-      }
     }
+    break;
   }
 }
 
@@ -79,19 +78,19 @@ void setup() {
   //keep trying wifi
   int retries = 0;
   while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
-      retries++;
-      if (retries > 20) {  // timeout after 10 seconds
-          Serial.println("\nFailed to connect to Wi-Fi!");
-          break;
-      }
+    delay(500);
+    Serial.print(".");
+    retries++;
+    if (retries > 20) {  // timeout after 10 seconds
+        Serial.println("\nFailed to connect to Wi-Fi!");
+        break;
+    }
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-      Serial.println("\nWi-Fi Connected!");
-      Serial.print("IP Address: ");
-      Serial.println(WiFi.localIP());
+    Serial.println("\nWi-Fi Connected!");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
   }
 
   // turn on the web server
