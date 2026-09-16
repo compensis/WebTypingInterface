@@ -6,11 +6,13 @@
 
 #include "USB.h"
 #include "USBHIDKeyboard.h"
+#include "tusb.h"
 #include <ESPmDNS.h>
 
 #include "wifi_credentials.h"
 
 USBHIDKeyboard Keyboard;
+bool announcedUsbConnected = false;
 
 WebServer server(80);
 WebSocketsServer webSocket(81);
@@ -34,6 +36,7 @@ void webSocketEvent(
 
   case WStype_DISCONNECTED:
     Serial.printf("WebSocket Client %u getrennt\n", client);
+    announcedUsbConnected = false;
     break;
 
   case WStype_BIN:
@@ -105,6 +108,16 @@ void setup() {
 }
 
 void loop() {
+  bool usbConnected = tud_mounted();
+  if (usbConnected != announcedUsbConnected) {
+    if (webSocket.connectedClients() > 0) {
+      announcedUsbConnected = usbConnected;
+      const char* msg = usbConnected ? "connected" : "disconnected";
+      Serial.printf("USB %s\n", msg);
+      webSocket.broadcastTXT(msg);
+    }
+  }
+
   server.handleClient();
   webSocket.loop();
 }

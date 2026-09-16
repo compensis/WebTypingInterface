@@ -13,6 +13,10 @@
     let modifiers = 0;
     const socket = new WebSocket(`ws://${location.hostname}:81`);
 
+    socket.addEventListener("message", (event) => {
+      console.log("Message from server ", event.data);
+    });
+
     // Mapping from KeyboardEvent.code values to USB HID Keyboard scan codes
     const codes = {
       Unidentified: 0x00,
