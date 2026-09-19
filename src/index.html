@@ -3,8 +3,24 @@
 <head>
   <title>ESP32 USB HID Keyboard</title>
   <style>
-    body { font-family: Arial; }
-    textarea { width: 100%; font-size: 16px; }
+    html, body {
+      font-family: Arial;
+      margin: 0;
+      height: 100%;
+    }
+    textarea {
+      width: 100%;
+      height: 100%;
+      padding: 10px;
+      font-size: 26px;
+      border: none;
+    }
+    textarea:disabled {
+      background: transparent;
+    }
+    textarea:focus {
+      outline: none;
+    }
     .slider-container { margin-top: 10px; }
     label { display: block; margin-top: 10px; }
   </style>
@@ -14,7 +30,18 @@
     const socket = new WebSocket(`ws://${location.hostname}:81`);
 
     socket.addEventListener("message", (event) => {
-      console.log("Message from server ", event.data);
+      const cursor = document.getElementById("cursor");
+      if (event.data == "connected") {
+        cursor.disabled = false;
+        cursor.focus();
+      }
+      if (event.data == "disconnected") {
+        cursor.disabled = true;
+      }
+    });
+
+    socket.addEventListener("close", (event) => {
+      document.getElementById("cursor").disabled = true;
     });
 
     // Mapping from KeyboardEvent.code values to USB HID Keyboard scan codes
@@ -190,10 +217,11 @@
     }
 
     document.addEventListener("keyup", event => {
+      document.getElementById("cursor").value = "";
+
       if (isModifierKey(event.code)) {
         const mask = modifierMasks[event.code];
         modifiers &= ~mask;
-        return;
       }
     });
 
@@ -214,10 +242,6 @@
 </head>
 
 <body>
-  <h2>ESP32 USB HID Keyboard</h2>
-
-  <textarea id="inputText" rows="10"
-    placeholder="Enter = send | Shift+Enter = newline"></textarea>
-
+  <textarea id="cursor" disabled></textarea>
 </body>
 </html>
