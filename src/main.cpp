@@ -72,7 +72,8 @@ void setup() {
   Keyboard.begin();
   USB.begin();
 
-  WiFi.setHostname("human-typing-keyboard");
+  const char* hostName = "web-typing-interface";
+  WiFi.setHostname(hostName);
 
   //start wifi
   WiFi.begin(ssid, password);
@@ -103,8 +104,9 @@ void setup() {
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
 
-  // setup http://human-typing-keyboard.local
-  MDNS.begin("human-typing-keyboard");
+  // setup http://<hostname>.local
+  MDNS.begin(hostName);
+  Serial.printf("http://%s.local\n", hostName);
 }
 
 void loop() {
