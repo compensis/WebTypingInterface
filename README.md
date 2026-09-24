@@ -1,84 +1,70 @@
-# ESP32-S3 USB HID Macro Keyboard + Web Typing Interface
+# ESP32-S3 USB HID Web Typing Interface
 
-This project turns an ESP32-S3 into a USB HID keyboard with a built-in web interface that can type text into another computer in a human-like way and trigger macro commands using physical Cherry MX keys.
-![Demo](images/demo.gif)
-![Demo2](images/demo_web.gif)
----
+## This project turns an ESP32-S3 into a USB HID keyboard with a built-in web interface that allows keyboard input from a web browser to be sent to the ESP32 and forwarded as USB HID keyboard input to another computer.
 
 ## Features
 
-- USB HID Keyboard (TinyUSB)
-- No drivers needed on destination machine so works on any OS(literally everything: Windows, Linux, Mac, Android, Chrome OS, smart TVs, etc.)
-- Web interface hosted on the ESP32
-- Press Enter to send text (Shift+Enter inserts newline)
-- Human-like typing (random delays, pauses, backspaces)
-- 9 physical Cherry MX macro keys
-- Can skip physical keys for just remote typing
-- Debounced button handling
-- Serial debug output
-- mDNS support (.local address)
-- PlatformIO compatible
+* USB HID Keyboard (TinyUSB)
+* Web interface hosted directly on the ESP32
+* Keyboard input from a web browser
+* WebSocket communication between browser and ESP32
+* Keyboard input independent of the keyboard layout configured on the connected USB host
+* Support for letters, numbers, function keys, navigation keys, numpad keys and additional international keys
+* Support for left and right Ctrl, Shift, Alt and Meta modifiers
+* USB HID connection status reported to the web interface
+* Web interface is enabled only while the ESP32 USB HID device is connected
+* mDNS support (`.local` address)
+* Serial debug output
+* PlatformIO compatible
 
 ---
 
 ## Hardware Required
 
 ### Main Board
-- ESP32-S3 development board with native USB
-- Tested with: ESP32-S3 DevKit (N16R8)
-  - https://www.amazon.com/dp/B0CKXJLP4B
 
-### Buttons
-- 9x Cherry MX switches
-  - https://www.amazon.com/dp/B0DSHTPSL3
-- Optional keycaps
+* ESP32-S3 development board with native USB
+* Tested with: ESP32-S3 DevKit
 
 ### Wiring
-- Jumper wires
-- USB-C data cables (must support data, not power-only)
 
----
+No additional buttons or external hardware are required.
 
-## GPIO Pin Mapping (Physical Keys)
-
-Each Cherry MX switch connects between a GPIO pin and GND.
-Internal pull-ups are used (INPUT_PULLUP).
-
-| Button | GPIO | Action |
-|------|------|--------|
-| 1 | GPIO 4 | Ctrl + C |
-| 2 | GPIO 5 | Ctrl + V |
-| 3 | GPIO 12 | Ctrl + A |
-| 4 | GPIO 13 | KEEP ALIVE -> www.google.com (win only) |
-| 5 | GPIO 14 | Alt + Tab |
-| 6 | GPIO 15 | Ctrl + X |
-| 7 | GPIO 16 | Ctrl + Alt + Del (delay) enter |
-| 8 | GPIO 17 | Ctrl + S |
-| 9 | GPIO 18 | Ctrl + P |
-
-### Wiring Diagram (Concept)
-
-GPIO ----[ Cherry MX Switch ]---- GND
-
-- Button pressed = LOW
-- Button released = HIGH
-- No external resistors required
+* USB-C data cable
+* Wi-Fi connection
 
 ---
 
 ## Software Setup (PlatformIO)
 
 ### Install Tools
-- Visual Studio Code
-- PlatformIO extension
+
+* Visual Studio Code
+* PlatformIO extension
+
+The project uses the Arduino framework for the ESP32-S3.
+
 ---
 
 ## Wi-Fi Configuration
 
-Edit main.cpp and set your Wi-Fi credentials:
+Wi-Fi credentials are stored in a separate header file to keep them out of the repository.
 
+Before building the project:
+
+1. Copy `src/wifi_credentials.example.h` to `src/wifi_credentials.h`.
+2. Open `src/wifi_credentials.h` and enter your Wi-Fi network name and password:
+
+```cpp
 const char* ssid = "YOUR_WIFI_NAME";
 const char* password = "YOUR_WIFI_PASSWORD";
+```
+
+3. Save the file.
+
+The `wifi_credentials.h` file contains your personal Wi-Fi credentials and must not be committed to the repository.
+
+The example file `wifi_credentials.example.h` is provided as a template and can safely remain in the repository.
 
 ---
 
@@ -86,10 +72,9 @@ const char* password = "YOUR_WIFI_PASSWORD";
 
 ### USB Connections
 
-- UART / COM port: flashing firmware and Serial Monitor
-- Native USB port: HID keyboard device
+The ESP32-S3 uses its native USB connection for the HID keyboard.
 
-Both ports can be connected to the same computer at the same time.
+The USB connection is used to present the ESP32-S3 to the host computer as a USB HID keyboard.
 
 ### Upload Firmware
 
@@ -99,56 +84,129 @@ Use PlatformIO "Upload".
 
 Use PlatformIO "Monitor".
 
-Expected output:
+The firmware outputs information about startup, Wi-Fi connection, IP address and USB HID connection status.
 
-WiFi Connected
-IP Address: xxx.xxx.xxx.xxx
-http://human-typing-keyboard.local
+After successfully connecting to Wi-Fi, the ESP32 prints its assigned IP address and its mDNS address.
 
 ---
 
 ## Web Interface
 
-Open the following in your browser:
+Open the web interface in a browser using the IP address reported by the ESP32 or the configured mDNS hostname:
 
-http://human-typing-keyboard.local
+http://web-typing-interface.local
 
-- Press Enter to send text and clears the textbox
-- Shift + Enter inserts a newline
+The web page contains a single text input area.
+
+The input area is disabled while the USB HID device is not connected to a host computer. Once the ESP32-S3 USB HID device is detected, the input area is enabled automatically.
+
+Keyboard input is processed directly in the browser and transmitted to the ESP32 via WebSocket.
 
 ---
 
-## Physical Macro Keys
+## Keyboard Input
 
-- Each key triggers once per press
-- Fully debounced in software
-- Serial output confirms key presses
+The web interface supports USB HID keyboard input for:
+
+* Letters (`A`–`Z`)
+* Number row (`0`–`9`)
+* Enter, Escape, Backspace, Tab and Space
+* Main keyboard punctuation keys
+* Caps Lock
+* Function keys (`F1`–`F24`)
+* Navigation and system keys
+* Arrow keys
+* Numeric keypad
+* Additional international and IME keys
+
+Modifier keys are supported independently for left and right:
+
+* Left / Right Ctrl
+* Left / Right Shift
+* Left / Right Alt
+* Left / Right Meta
+
+Modifier keys are tracked while typing and are included in the keyboard report when another key is sent.
+
+---
+
+## WebSocket Communication
+
+The browser establishes a WebSocket connection to port `81` of the ESP32.
+
+Keyboard input is handled using the browser's `KeyboardEvent.code` value. Unlike the character produced by a keyboard key, `KeyboardEvent.code` identifies the physical key independently of the keyboard layout configured on the connected computer.
+
+The corresponding USB HID keyboard code is sent to the ESP32 together with the currently active modifier keys. The ESP32 then generates a USB HID keyboard report for the connected computer.
+
+This approach makes the keyboard input independent of the keyboard layout configured on the USB host. The ESP32 does not send characters such as `y` or `z`; it sends the corresponding physical keyboard key as a USB HID code. The connected computer interprets this key according to its own keyboard layout.
+
+For keyboard input, the browser sends a two-byte binary packet:
+
+```text
+Byte 0: USB HID modifier mask
+Byte 1: USB HID key code
+```
+
+The first byte contains the state of the following modifier keys:
+
+* Left / Right Ctrl
+* Left / Right Shift
+* Left / Right Alt
+* Left / Right Meta
+
+Modifier keys themselves are not sent as individual keyboard reports. Their state is included in the modifier mask when another key is transmitted.
+
+On the ESP32, the two bytes are used to create a USB HID keyboard report. The report is sent to the connected USB host and the key is released again after a short delay.
+
+The ESP32 also sends the following status messages to the browser:
+
+```text
+connected
+disconnected
+```
+
+These messages indicate whether the ESP32 USB HID device is currently mounted by the USB host.
+
+---
+
+## mDNS
+
+The ESP32 advertises the web interface using mDNS.
+
+The default hostname is:
+
+`web-typing-interface.local`
+
+This allows the web interface to be accessed without manually determining the ESP32's IP address, provided that mDNS is available on the local network.
 
 ---
 
 ## Debugging Notes
 
-- Buttons are active LOW
-- HIGH = unpressed
-- LOW = pressed
-- Use Serial output to verify wiring
+The Serial Monitor can be used to verify:
+
+* ESP32 startup
+* Wi-Fi connection
+* Assigned IP address
+* WebSocket client connections
+* Received HID modifier masks
+* Received HID key codes
+* USB HID connection and disconnection
+
+The WebSocket server listens on port `81`.
+
+The HTTP web server listens on port `80`.
 
 ---
 
 ## Notes
 
-- ESP32-S3 supports 2.4 GHz Wi-Fi only
-- Many USB-C cables are power-only — use data-capable cables
-- HID typing controls your computer — use with caution
-- This is built as a demonstration use at your own risk. I take no responsiblity for actions with this device.
-
----
-
-## Future Improvements
-
-- Web-configurable macros
-- Key remapping
-- OLED display support
+* The ESP32-S3 requires a native USB connection for USB HID functionality.
+* A USB-C cable capable of data transfer is required.
+* The ESP32-S3 connects to Wi-Fi during startup.
+* The web interface requires a browser with WebSocket support.
+* Keyboard input is generated by the ESP32 as USB HID input, so the connected computer treats it like input from a physical USB keyboard.
+* The current implementation sends individual key press/release reports. It does not implement human-like typing delays, text buffering or macro execution.
 
 ---
 
@@ -160,6 +218,9 @@ MIT License
 
 ## Credits
 
-- ESP32 Arduino Core
-- TinyUSB
-- PlatformIO
+This project uses the following open-source projects:
+
+* [Arduino ESP32 Core](https://github.com/espressif/arduino-esp32) – Arduino framework and ESP32 support
+* [TinyUSB](https://github.com/hathach/tinyusb) – USB stack used for USB HID functionality
+* [arduinoWebSockets](https://github.com/Links2004/arduinoWebSockets) – WebSocket communication between the web interface and the ESP32
+* [PlatformIO](https://platformio.org/) – development and build environment
